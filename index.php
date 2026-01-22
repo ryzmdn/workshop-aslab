@@ -1,54 +1,21 @@
 <?php
-    /**
- * ==========================================
- * LOGIN PAGE - SISTEM INFORMASI AKADEMIK
- * ==========================================
- *
- * File: index.php
- * Fungsi: Entry point aplikasi, validasi login
- *
- * Fitur:
- * - Form login (username, password)
- * - Validasi credentials dari tabel user
- * - Password hashing dengan MD5
- * - Auto-redirect berdasarkan role
- *
- * Security:
- * - mysqli_real_escape_string untuk prevent SQL injection
- * - MD5 password hashing
- * - Session management
- *
- * Database:
- * - Query: SELECT * FROM user WHERE username & password cocok
- *
- * Redirect:
- * - admin → admin/index.php
- * - dosen → dosen/index.php
- * - mahasiswa → mahasiswa/index.php
- */
-
     include './koneksi.php';
     session_start();
 
     $alert_gagal_login = '';
 
     if (isset($_POST['login'])) {
-    // Escape input untuk prevent SQL injection
     $username = mysqli_real_escape_string($koneksi, $_POST['username']);
-    // Hash password dengan MD5
     $password = md5($_POST['password']);
 
-    // Query cek user
     $query      = "SELECT * FROM user WHERE username='$username' AND password='$password'";
     $result     = mysqli_query($koneksi, $query);
     $lihat_user = mysqli_fetch_assoc($result);
 
     if ($lihat_user) {
-        // Set session untuk user yang login
         $_SESSION['username'] = $lihat_user['username'];
         $_SESSION['level']    = $lihat_user['level'];
 
-        // Redirect berdasarkan role/level
         if ($lihat_user['level'] == 'admin') {
             header("Location: admin/index.php");
             exit();
@@ -60,7 +27,6 @@
             exit();
         }
     } else {
-        // Jika credentials salah
         $alert_gagal_login = "Username atau Password salah!";
     }
     }
@@ -122,5 +88,6 @@
         </form>
     </div>
 </body>
+
 
 </html>
