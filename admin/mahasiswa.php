@@ -1,0 +1,268 @@
+<?php
+    session_start();
+    include '../koneksi.php';
+
+    if (! isset($_SESSION['username']) || $_SESSION['level'] != 'admin') {
+    header("Location: ../index.php");
+    exit();
+    }
+
+    if (isset($_POST['tambah'])) {
+    $nama     = mysqli_real_escape_string($koneksi, $_POST['nama']);
+    $nim      = mysqli_real_escape_string($koneksi, $_POST['nim']);
+    $prodi    = mysqli_real_escape_string($koneksi, $_POST['prodi']);
+    $angkatan = mysqli_real_escape_string($koneksi, $_POST['angkatan']);
+
+    $cek = mysqli_query($koneksi, "SELECT nim FROM mahasiswa WHERE nim='$nim'");
+    if (mysqli_num_rows($cek) > 0) {
+        $error_msg = "NIM sudah terdaftar!";
+    } else {
+        $query = "INSERT INTO mahasiswa (nim, nama, prodi, angkatan)
+                         VALUES ('$nim', '$nama', '$prodi', '$angkatan')";
+        if (mysqli_query($koneksi, $query)) {
+            // Auto-insert ke tabel user
+            $username = substr($nim, 0, 4);
+            $password = md5($nim);
+            $level    = 'mahasiswa';
+
+            $query_user = "INSERT INTO user (username, password, level)
+                          VALUES ('$username', '$password', '$level')
+                          ON DUPLICATE KEY UPDATE password='$password'";
+            mysqli_query($koneksi, $query_user);
+
+            $success_msg = "Data mahasiswa berhasil ditambahkan! User login: $username / $nim";
+        } else {
+            $error_msg = "Error: " . mysqli_error($koneksi);
+        }
+    }
+    }
+
+    if (isset($_GET['hapus'])) {
+    $nim = mysqli_real_escape_string($koneksi, $_GET['hapus']);
+
+    // Delete dari tabel user
+    $username = substr($nim, 0, 4);
+    mysqli_query($koneksi, "DELETE FROM user WHERE username='$username'");
+
+    // Delete dari tabel mahasiswa
+    mysqli_query($koneksi, "DELETE FROM mahasiswa WHERE nim = '$nim'");
+    header("Location: mahasiswa.php");
+    exit();
+    }
+
+    if (isset($_POST['update'])) {
+    $nim   = mysqli_real_escape_string($koneksi, $_POST['nim']);
+    $nama  = mysqli_real_escape_string($koneksi, $_POST['nama']);
+    $prodi = mysqli_real_escape_string($koneksi, $_POST['prodi']);
+
+    mysqli_query(
+        $koneksi,
+        "UPDATE mahasiswa SET
+            nama='$nama',
+            prodi='$prodi'
+         WHERE nim='$nim'"
+    );
+
+    header("Location: mahasiswa.php");
+    exit();
+    }
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Mahasiswa | SIA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <style>
+        body {
+            background: #f6f9fc;
+        }
+
+        .table-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .navbar {
+            border-radius: 0 0 15px 15px;
+        }
+
+        .btn-add {
+            margin-bottom: 15px
+        }
+    </style>
+
+</head>
+
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand">SIA</a>
+            <div class="d-flex">
+                <a href="index.php" class="btn btn-light btn-sm me-2">Dashboard</a>
+                <a href="logout.php" class="btn btn-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="table-container">
+            <h3>Data Mahasiswa</h3>
+
+            <?php if (isset($error_msg)): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($error_msg); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($success_msg)): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($success_msg); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
+            <button class="btn btn-success btn-add"
+                data-bs-toggle="modal"
+                data-bs-target="#modalTambah">
+                + Tambah Mahasiswa
+            </button>
+
+            <table class="table table-striped table-bordered">
+                <thead class="table-primary">
+                    <tr class="text-center">
+                        <td>NIM</td>
+                        <td>Nama</td>
+                        <td>Prodi</td>
+                        <td>Angkatan</td>
+                        <td>Aksi</td>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <?php
+                        $data = mysqli_query($koneksi, "SELECT * FROM mahasiswa ORDER BY nim ASC");
+                        if (! $data) {
+                            echo "<tr><td colspan='5' class='text-center text-danger'>Error: " . mysqli_error($koneksi) . "</td></tr>";
+                        } elseif (mysqli_num_rows($data) == 0) {
+                            echo "<tr><td colspan='5' class='text-center'>Belum ada data mahasiswa</td></tr>";
+                        } else {
+                            while ($row = mysqli_fetch_assoc($data)) {
+                                echo "
+    <tr>
+        <td>{$row['nim']}</td>
+        <td>{$row['nama']}</td>
+        <td>{$row['prodi']}</td>
+        <td>{$row['angkatan']}</td>
+        <td class='text-center'>
+            <button class='btn btn-warning btn-sm'
+        data-bs-toggle='modal'
+        data-bs-target='#modalEdit{$row['nim']}'>
+    Edit
+</button>
+
+            <a href='?hapus={$row['nim']}' class='btn btn-danger btn-sm'
+               onclick=\"return confirm('Yakin hapus data?')\">Hapus</a>
+        </td>
+    </tr>";
+
+                                echo "
+<div class='modal fade' id='modalEdit{$row['nim']}'>
+  <div class='modal-dialog'>
+    <div class='modal-content'>
+      <div class='modal-header bg-warning'>
+        <h5 class='modal-title'>Edit Data Mahasiswa</h5>
+        <button type='button' class='btn-close' data-bs-dismiss='modal'></button>
+      </div>
+
+      <form method='POST'>
+        <div class='modal-body'>
+          <input type='hidden' name='nim' value='{$row['nim']}'>
+
+          <div class='mb-3'>
+            <label>Nama</label>
+            <input type='text' name='nama' class='form-control' value='{$row['nama']}' required>
+          </div>
+
+          <div class='mb-3'>
+            <label>Prodi</label>
+            <input type='text' name='prodi' class='form-control' value='{$row['prodi']}' required>
+          </div>
+
+          <div class='mb-3'>
+            <label>Angkatan</label>
+            <input type='number' name='angkatan' class='form-control' value='{$row['angkatan']}'>
+          </div>
+        </div>
+
+        <div class='modal-footer'>
+          <button type='submit' name='update' class='btn btn-primary'>Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+";
+                            }
+                        }
+
+                    ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTambah">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Tambah Mahasiswa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form method="POST">
+                    <div class="modal-body">
+
+                        <div class="mb-3">
+                            <label>NIM</label>
+                            <input type="text" name="nim" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Nama</label>
+                            <input type="text" name="nama" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Angkatan</label>
+                            <input type="number" name="angkatan" class="form-control">
+                        </div>
+
+                            <div class="mb-3">
+                                <label>Prodi</label>
+                                <input type="prodi" name="prodi" class="form-control" required>
+                            </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="submit" name="tambah" class="btn btn-success">
+                            Simpan
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+</html>
