@@ -1,4 +1,4 @@
-# SISTEM INFORMASI AKADEMIK (SIA) v1.0
+# SISTEM INFORMASI AKADEMIK (SIA)
 
 **Platform Web untuk Mengelola Data Akademik (Mahasiswa, Dosen, Mata Kuliah, Nilai)**
 
@@ -472,14 +472,3 @@ admin / admin123
 # 5. Test dengan debug page
 http://localhost/workshop_aslab/debug_login.php
 ```
-
----
-
-**🎉 Selamat! Sistem Informasi Akademik siap digunakan!**
-
-**Next Step:** Buka `INDEX_DOKUMENTASI.md` untuk navigasi lengkap
-
----
-
-_Last Updated: 22 Januari 2026_  
-_Version: 1.0 (Production Ready)_
